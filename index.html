@@ -1,0 +1,43 @@
+<link rel="stylesheet" href="./og.css">
+<div id="globus"></div>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dotenv@16.0.0/lib/main.min.js"></script>
+<script type="module">
+
+  import { layer, Globe, terrain } from './og.esm.js'
+
+  const { XYZ } = layer
+  const { GlobusTerrain } = terrain
+
+  const osm = new XYZ("OpenStreetMap", {
+    isBaseLayer: true,
+    url: "//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    visibility: true,
+  })
+
+  const globus = new Globe({
+    target: "globus", // a HTMLDivElement which its id is `globus`
+    name: "Earth",
+    terrain: new GlobusTerrain(),
+    layers: [osm],
+    autoActivated: true,
+    viewExtent: [5.56707, 45.15679, 5.88834, 45.22260]
+  })
+
+  const key="d3104375bd592736cf8775886538ee2a"
+
+    document.querySelector("#globus").addEventListener("click", (e) => {
+        // console.log(document.querySelector(".ogEarthCoordinatesControl").innerText)
+        const coords = document.querySelector(".ogEarthCoordinatesControl").innerText.split(",")
+        // console.log(coords)
+        const lat = coords[0].split(" ")[1]
+        const lon = coords[1].split(" ")[1]
+        
+        // const alt = coords[2].split(" ")[1]
+        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}`
+        axios.get(url).then(res => {
+            console.log(res.data)
+        })
+    })
+
+</script>
