@@ -1,25 +1,23 @@
-<link rel="stylesheet" href="./og.css">
+<link rel="stylesheet" href="./og.css" />
 <link rel="stylesheet" href="//www.openglobus.org/og.css" type="text/css" />
 <script src="//www.openglobus.org/og.js"></script>
-<div id="globus">
-  <button id="flyPoint" style="position: absolute; left:100px; margin:10px;">Fly point</button>
-  <button id="viewExtent" style="position: absolute; left:210px; margin:10px;">View extent</button>
-</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/json2html/2.2.1/json2html.min.js"></script>
+<div id="globus"></div>
 
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dotenv@16.0.0/lib/main.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.js"></script>
 <script type="module">
+  import { layer, Globe, terrain } from "./og.esm.js";
 
-  import { layer, Globe, terrain } from './og.esm.js'
-
-  const { XYZ } = layer
-  const { GlobusTerrain } = terrain
+  const { XYZ } = layer;
+  const { GlobusTerrain } = terrain;
 
   const osm = new XYZ("OpenStreetMap", {
     isBaseLayer: true,
     url: "//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     visibility: true,
-  })
+  });
 
   const globus = new Globe({
     target: "globus", // a HTMLDivElement which its id is `globus`
@@ -27,99 +25,64 @@
     terrain: new GlobusTerrain(),
     layers: [osm],
     autoActivated: true,
-    viewExtent: [5.56707, 45.15679, 5.88834, 45.22260]
-  })
+  });
 
-//   document.getElementById("flyPoint").onclick = function () {
-//     const coords = document.querySelector(".ogEarthCoordinatesControl").innerText.split(",")
-//         // console.log(coords)
-//         const lat = coords[0].split(" ")[1]
-//         const lon = coords[1].split(" ")[1]
+  const key = "d3104375bd592736cf8775886538ee2a";
 
-// let ell = globus.planet.ellipsoid;
-
-// let destPos = new og.LonLat(lon, lat, 10779);
-// let viewPoi = new og.LonLat(lon-2, lat-2, 3039);
-
-// let lookCart = ell.lonLatToCartesian(viewPoi);
-// let upVec = ell.lonLatToCartesian(destPos).normalize();
-
-// // 0 - is an amplitude of the fly track
-// globus.planet.camera.flyLonLat(destPos, lookCart, upVec, 0);
-// };
-
-// document.getElementById("viewExtent").onclick = function () {
-//             globus.planet.flyExtent(new og.Extent(new og.LonLat(9.53297, 46.02795), new og.LonLat(11.56212, 45.78692)));
-//         };
-
-  const key="d3104375bd592736cf8775886538ee2a"
-
-    document.querySelector("#globus").addEventListener("click", (e) => {
-        // console.log(document.querySelector(".ogEarthCoordinatesControl").innerText)
-        const coords = document.querySelector(".ogEarthCoordinatesControl").innerText.split(",")
-        // console.log(coords)
-        const lat = coords[0].split(" ")[1]
-        const lon = coords[1].split(" ")[1]
-        
-        // const alt = coords[2].split(" ")[1]
-        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}`
-        axios.get(url).then(res => {
-            console.log(res.data)
-            // document.querySelector("#globus").append(
-            //   `<div>${res.data}</div>`
-            // );
-          let myPopup = new og.Popup({
-              planet: globus.planet,
-              offset: [0, -25],
-              html: `<div>${res.data.weather[0].description}</div>`,
-              // position: new og.LonLat(lon, lat, 10779),
-              // closeButton: true,
-              visibility: false
-            })
-            
-            let lonLat = globus.planet.getLonLatFromPixelTerrain(e);
-
-            globus.planet.terrain.getHeightAsync(lonLat, (h) => {
-                myPopup.setContent(
-                  `<div>${res.data.weather[0].description}</div>`
-                  // `lon = ${lonLat.lon.toFixed(5)}<br/>lat = ${lonLat.lat.toFixed(5)}<br/>height(msl) = ${Math.round(h)} m`
-                  );
-            });
-
-            let groundPos = globus.planet.getCartesianFromMouseTerrain();
-            myPopup.setCartesian3v(groundPos);
-
-            myPopup.setVisibility(true);
-
-        })
-    })
-
-    // let globe = new og.Globe({
-    //         target: "globus",
-    //         name: "Earth",
-    //         layers: [osm],
-    //         terrain: new og.terrain.GlobusTerrain()
-    //     });
+  // let myPopup = new og.Popup({
+  //   planet: globus.planet,
+  //   offset: [0, -25],
+  //   visibility: false,
+  // });
 
 
-    // let myPopup = new og.Popup({
-    //         planet: globe.planet,
-    //         offset: [0, -25],
-    //         visibility: false
-    //     });
+  for(let x = -90;x<=90;x+=30){
+    for(let y = -180;y<=180;y+=30){
+    // console.log(x,y)
+    let lonLat = new og.LonLat(y,x);
+    let myPopup = new og.Popup({
+    planet: globus.planet,
+    offset: [0, -25],
+    // visibility: false,
+  });
+      // let lonLat = globus.planet.getLonLatFromPixelTerrain(x,y);
+      console.log(lonLat)
+      // globus.planet.terrain.getHeightAsync(lonLat, (h) => {
+      //  let groundPos = globus.planet.getCartesianFromMouseTerrain();
+      //   myPopup.setCartesian3v(groundPos);
+        myPopup.setContent(`<div>${x},${y}</div>`);
+        myPopup.setVisibility(true);
+      // });
+    }
+  }
 
-    //     globe.planet.renderer.events.on("lclick", (e) => {
-            // let lonLat = globe.planet.getLonLatFromPixelTerrain(e);
+  // globus.planet.renderer.events.on("lclick", (e) => {
+  //   const coords = document
+  //     .querySelector(".ogEarthCoordinatesControl")
+  //     .innerText.split(",");
 
-            // globe.planet.terrain.getHeightAsync(lonLat, (h) => {
-            //     myPopup.setContent(`lon = ${lonLat.lon.toFixed(5)}<br/>lat = ${lonLat.lat.toFixed(5)}<br/>height(msl) = ${Math.round(h)} m`);
-            // });
+  //   const lat = coords[0].split(" ")[1];
+  //   const lon = coords[1].split(" ")[1];
 
-            // let groundPos = globe.planet.getCartesianFromMouseTerrain();
-            // myPopup.setCartesian3v(groundPos);
+  //   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}&units=imperial`;
+  //   axios.get(url).then((res) => {
+  //     console.log(res.data);
 
-            // myPopup.setVisibility(true);
-    //     });
+  //     let lonLat = globus.planet.getLonLatFromPixelTerrain(e);
+  //     globus.planet.terrain.getHeightAsync(lonLat, (h) => {
+  //       myPopup.setContent(
+  //         `<div>Degrees Farenheit: ${res.data.main.temp}</div>`
+  //       );
+  //     });
+  //     let groundPos = globus.planet.getCartesianFromMouseTerrain();
+  //     myPopup.setCartesian3v(groundPos);
+  //     myPopup.setVisibility(true);
+  //   });
+  // });
 
+
+
+
+  
 </script>
 
