@@ -1,12 +1,30 @@
 <link rel="stylesheet" href="./og.css" />
 <link rel="stylesheet" href="//www.openglobus.org/og.css" type="text/css" />
 <script src="//www.openglobus.org/og.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/json2html/2.2.1/json2html.min.js"></script>
-<div id="globus"></div>
+<!-- Include from a free CDN -->
+<script src="https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js"></script>
+
+<div id="globus">
+  <button id="viewExtent" onClick="{window.viewExtent()}">View extent</button>
+
+  <!-- <div id="weatherDisplay" style="display:none"> -->
+  <div id="sun" class="weather sunny" style="display: none">
+    Conditions: Clear
+  </div>
+  <div id="cloud" class="weather cloudy" style="display: none">
+    Conditions: Clouds
+  </div>
+  <div id="rain" class="weather rainy" style="display: none">
+    Conditions: Rain
+  </div>
+  <div id="snow" class="weather snowy" style="display: none">
+    Conditions: Snow
+  </div>
+  <div id="renderJson" style="display: none">OpenWeatherMap API Results:</div>
+  <!-- </div> -->
+</div>
 
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dotenv@16.0.0/lib/main.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.js"></script>
 <script type="module">
   import { layer, Globe, terrain } from "./og.esm.js";
 
@@ -19,70 +37,355 @@
     visibility: true,
   });
 
+  let states = new og.layer.WMS("USA Population", {
+    extent: [
+      [-128, 24],
+      [-66, 49],
+    ],
+    visibility: true,
+    isBaseLayer: false,
+    // url: "//openglobus.org:8080/geoserver/",
+    layers: "topp:states",
+    opacity: 1.0,
+    transparentColor: [1.0, 1.0, 1.0],
+  });
+
   const globus = new Globe({
     target: "globus", // a HTMLDivElement which its id is `globus`
     name: "Earth",
     terrain: new GlobusTerrain(),
-    layers: [osm],
+    layers: [osm, states],
     autoActivated: true,
   });
 
+  globus.planet.flyExtent(states.getExtent());
+
   const key = "d3104375bd592736cf8775886538ee2a";
-
-  // let myPopup = new og.Popup({
-  //   planet: globus.planet,
-  //   offset: [0, -25],
-  //   visibility: false,
-  // });
-
-
-  for(let x = -90;x<=90;x+=30){
-    for(let y = -180;y<=180;y+=30){
-    // console.log(x,y)
-    let lonLat = new og.LonLat(y,x);
-    let myPopup = new og.Popup({
+  let myPopup = new og.Popup({
     planet: globus.planet,
     offset: [0, -25],
-    // visibility: false,
+    visibility: false,
   });
-      // let lonLat = globus.planet.getLonLatFromPixelTerrain(x,y);
-      console.log(lonLat)
-      // globus.planet.terrain.getHeightAsync(lonLat, (h) => {
-      //  let groundPos = globus.planet.getCartesianFromMouseTerrain();
-      //   myPopup.setCartesian3v(groundPos);
-        myPopup.setContent(`<div>${x},${y}</div>`);
-        myPopup.setVisibility(true);
-      // });
+
+  window.changeConditions = function () {
+    if (window.weather.weather[0].main) {
+      // document.getElementById("weatherDisplay").style.display = "flex";
+
+      let rain = document.getElementById("rain");
+      window.weather.weather[0].main == "Rain"
+        ? (rain.style.display = "block")
+        : (rain.style.display = "none");
+      let sun = document.getElementById("sun");
+      window.weather.weather[0].main == "Clear"
+        ? (sun.style.display = "block")
+        : (sun.style.display = "none");
+      let cloud = document.getElementById("cloud");
+      window.weather.weather[0].main == "Clouds"
+        ? (cloud.style.display = "block")
+        : (cloud.style.display = "none");
+      let snow = document.getElementById("snow");
+      window.weather.weather[0].main == "Snow"
+        ? (snow.style.display = "block")
+        : (snow.style.display = "none");
+
+      document
+        .getElementById("renderJson")
+        .appendChild(renderjson(window.weather));
+      document.getElementById("renderJson").style.display = "block";
+    }
+  };
+
+  window.viewPoint = function () {
+    window.changeConditions();
+
+    let lat = window.lat;
+    let lon = window.lon;
+
+    const DIST = 2000;
+    let viewPoi = new og.LonLat(lon, lat, 3039);
+    let ell = globus.planet.ellipsoid;
+    globus.planet.camera.flyDistance(ell.lonLatToCartesian(viewPoi), DIST);
+  };
+
+  window.flyPoint = function () {
+    window.changeConditions();
+
+    let lat = window.lat;
+    let lon = window.lon;
+
+    let ell = globus.planet.ellipsoid;
+
+    let destPos = new og.LonLat(lon, lat, 10779);
+    let viewPoi = new og.LonLat(lon - 0.2, lat - 0.2, 3039);
+
+    let lookCart = ell.lonLatToCartesian(viewPoi);
+    let upVec = ell.lonLatToCartesian(destPos).normalize();
+
+    // 0 - is an amplitude of the fly track
+    globus.planet.camera.flyLonLat(destPos, lookCart, upVec, 0);
+  };
+
+  window.viewExtent = function () {
+    document.getElementById("rain").style.display = "none";
+    document.getElementById("sun").style.display = "none";
+    document.getElementById("cloud").style.display = "none";
+    document.getElementById("snow").style.display = "none";
+    document.getElementById("renderJson").style.display = "none";
+    document
+      .getElementById("renderJson")
+      .removeChild(document.getElementById("renderJson").firstChild);
+
+    let lat = window.lat;
+    let lon = window.lon;
+
+    globus.planet.flyExtent(
+      new og.Extent(
+        new og.LonLat(lon, lat),
+        new og.LonLat(lon + 0.1, lat + 0.1)
+      )
+    );
+  };
+
+  globus.planet.renderer.events.on("lclick", (e) => {
+    const coords = document
+      .querySelector(".ogEarthCoordinatesControl")
+      .innerText.split(",");
+
+    window.lat = coords[0].split(" ")[1];
+    window.lon = coords[1].split(" ")[1];
+
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${window.lat}&lon=${window.lon}&appid=${key}&units=imperial`;
+    axios.get(url).then((res) => {
+      console.log(res.data);
+      window.weather = res.data;
+
+      let lonLat = globus.planet.getLonLatFromPixelTerrain(e);
+      globus.planet.terrain.getHeightAsync(lonLat, (h) => {
+        myPopup.setContent(
+          `<div>Name: ${res.data.name}</div>
+          <button id="viewPoint" onClick={window.viewPoint()}>View Point</button>
+          <button id="flyPoint" onClick={window.flyPoint()}>Fly Point</button>
+          `
+        );
+      });
+      let groundPos = globus.planet.getCartesianFromMouseTerrain();
+      myPopup.setCartesian3v(groundPos);
+      myPopup.setVisibility(true);
+    });
+  });
+</script>
+<style>
+  .weather {
+    position: absolute;
+    top: 0%;
+    right: 0%;
+    margin: 0 auto;
+    display: inline-block;
+    width: 180px;
+    height: 25%;
+    background: black;
+    color: white;
+    border-radius: 8px;
+  }
+  .sunny:before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background: #f6d963;
+    border-radius: 50%;
+    box-shadow: 0 0 20px #ff0;
+    z-index: 5;
+  }
+  .sunny:after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -45px 0 0 -45px;
+    width: 90px;
+    height: 90px;
+    background: #ffeb3b;
+    clip-path: polygon(
+      50% 0%,
+      65.43% 25%,
+      93.3% 25%,
+      78.87% 50%,
+      93.3% 75%,
+      64.43% 75%,
+      50% 100%,
+      35.57% 75%,
+      6.7% 75%,
+      21.13% 50%,
+      6.7% 25%,
+      35.57% 25%
+    );
+    z-index: 10;
+    animation: sunScale 2s linear infinite;
+  }
+  @keyframes sunScale {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
     }
   }
+  .cloudy:before,
+  .rainy:before,
+  .snowy:before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: #fff 22px -15px 0 6px, #fff 57px -6px 0 2px,
+      #fff 87px 4px 0 -4px, #fff 33px 6px 0 6px, #fff 61px 6px 0 2px,
+      #ccc 29px -23px 0 6px, #ccc 64px -14px 0 2px, #ccc 94px -4px 0 -4px;
+    z-index: 5;
+  }
+  .cloudy:before {
+    animation: cloudMove 2s linear infinite;
+  }
+  @keyframes cloudMove {
+    0% {
+      transform: translate(-50%, -50%);
+    }
+    50% {
+      transform: translate(-50%, -60%);
+    }
+    100% {
+      transform: translate(-50%, -50%);
+    }
+  }
+  .rainy:after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    width: 4px;
+    height: 14px;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: #fff 25px -10px 0, #fff 50px 0 0, #fff 75px -10px 0,
+      #fff 0 25px 0, #fff 25px 15px 0, #fff 50px 25px 0, #fff 75px 15px 0,
+      #fff 0 50px 0, #fff 25px 40px 0, #fff 50px 50px 0, #fff 75px 40px 0;
+    animation: rainDrop 2s linear infinite;
+  }
+  @keyframes rainDrop {
+    0% {
+      transform: translate(0, 0) rotate(10deg);
+    }
+    100% {
+      transform: translate(-4px, 24px) rotate(10deg);
+      box-shadow: #fff 25px -10px 0, #fff 50px 0 0, #fff 75px -10px 0,
+        #fff 0 25px 0, #fff 25px 15px 0, #fff 50px 25px 0, #fff 75px 15px 0,
+        rgba(255, 255, 255, 0) 0 50px 0, rgba(255, 255, 255, 0) 25px 40px 0,
+        rgba(255, 255, 255, 0) 50px 50px 0, rgba(255, 255, 255, 0) 75px 40px 0;
+    }
+  }
+  .snowy:after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: #fff 25px -10px 0, #fff 50px 0 0, #fff 75px -10px 0,
+      #fff 0 25px 0, #fff 25px 15px 0, #fff 50px 25px 0, #fff 75px 15px 0,
+      #fff 0 50px 0, #fff 25px 40px 0, #fff 50px 50px 0, #fff 75px 40px 0;
+    animation: snowDrop 2s linear infinite;
+  }
+  @keyframes snowDrop {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(25px);
+      box-shadow: #fff 25px -10px 0, #fff 50px 0 0, #fff 75px -10px 0,
+        #fff 0 25px 0, #fff 25px 15px 0, #fff 50px 25px 0, #fff 75px 15px 0,
+        rgba(255, 255, 255, 0) 0 50px 0, rgba(255, 255, 255, 0) 25px 40px 0,
+        rgba(255, 255, 255, 0) 50px 50px 0, rgba(255, 255, 255, 0) 75px 40px 0;
+    }
+  }
+</style>
 
-  // globus.planet.renderer.events.on("lclick", (e) => {
-  //   const coords = document
-  //     .querySelector(".ogEarthCoordinatesControl")
-  //     .innerText.split(",");
+<style>
+  #renderJson {
+    font-family: Arial, Helvetica, sans-serif;
+    position: absolute;
+    top: 25%;
+    /* left: 40%; */
+    right: 0;
+    margin: 0 auto;
+    height: fit-content;
+    width: fit-content;
+    text-shadow: none;
+    background: white;
+    padding: 1em;
+  }
 
-  //   const lat = coords[0].split(" ")[1];
-  //   const lon = coords[1].split(" ")[1];
+  .renderjson a {
+    text-decoration: none;
+  }
 
-  //   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}&units=imperial`;
-  //   axios.get(url).then((res) => {
-  //     console.log(res.data);
+  .renderjson .disclosure {
+    color: darkblue;
+    font-size: 150%;
+  }
 
-  //     let lonLat = globus.planet.getLonLatFromPixelTerrain(e);
-  //     globus.planet.terrain.getHeightAsync(lonLat, (h) => {
-  //       myPopup.setContent(
-  //         `<div>Degrees Farenheit: ${res.data.main.temp}</div>`
-  //       );
-  //     });
-  //     let groundPos = globus.planet.getCartesianFromMouseTerrain();
-  //     myPopup.setCartesian3v(groundPos);
-  //     myPopup.setVisibility(true);
-  //   });
-  // });
+  .renderjson .syntax {
+    color: grey;
+  }
 
+  .renderjson .string {
+    color: red;
+  }
 
+  .renderjson .number {
+    color: green;
+  }
 
+  .renderjson .boolean {
+    color: purple;
+  }
 
-  
-</script>
+  .renderjson .key {
+    color: orange;
+  }
 
+  .renderjson .keyword {
+    color: black;
+  }
+
+  .renderjson .object.syntax {
+    color: darkgreen;
+  }
+
+  .renderjson .array.syntax {
+    color: darkmagenta;
+  }
+</style>
+
+<style>
+  #weatherDisplay {
+    position: absolute;
+    background: black;
+    /* color: white; */
+    width: 50%;
+    height: 50%;
+    right: 0%;
+  }
+</style>
