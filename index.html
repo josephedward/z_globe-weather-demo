@@ -95,7 +95,18 @@
     }
   };
 
+
+window.removeJson = function(){
+  if(document.getElementById("renderJson").hasChildNodes()) {
+      document.getElementById("renderJson").removeChild(document.getElementById("renderJson").childNodes[0]);
+    }
+}
+
+
   window.viewPoint = function () {
+
+    window.removeJson();
+
     window.changeConditions();
 
     let lat = window.lat;
@@ -108,6 +119,9 @@
   };
 
   window.flyPoint = function () {
+    
+    window.removeJson();
+
     window.changeConditions();
 
     let lat = window.lat;
@@ -126,27 +140,35 @@
   };
 
   window.viewExtent = function () {
-    document.getElementById("rain").style.display = "none";
-    document.getElementById("sun").style.display = "none";
-    document.getElementById("cloud").style.display = "none";
-    document.getElementById("snow").style.display = "none";
-    document.getElementById("renderJson").style.display = "none";
-    document
-      .getElementById("renderJson")
-      .removeChild(document.getElementById("renderJson").firstChild);
-
+    window.removeJson();
+    window.hideWeatherInfo();
+    
     let lat = window.lat;
     let lon = window.lon;
 
     globus.planet.flyExtent(
-      new og.Extent(
+        new og.Extent(
         new og.LonLat(lon, lat),
         new og.LonLat(lon + 0.1, lat + 0.1)
       )
     );
   };
 
+window.hideWeatherInfo = function(){
+  document.getElementById("rain").style.display = "none";
+    document.getElementById("sun").style.display = "none";
+    document.getElementById("cloud").style.display = "none";
+    document.getElementById("snow").style.display = "none";
+    document.getElementById("renderJson").style.display = "none";
+
+}
+
+
   globus.planet.renderer.events.on("lclick", (e) => {
+    document
+      .getElementById("renderJson")
+      .removeChild(document.getElementById("renderJson").firstChild);
+
     const coords = document
       .querySelector(".ogEarthCoordinatesControl")
       .innerText.split(",");
