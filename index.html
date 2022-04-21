@@ -6,22 +6,25 @@
 
 <div id="globus">
   <button id="viewExtent" onClick="{window.viewExtent()}">View extent</button>
-
-  <!-- <div id="weatherDisplay" style="display:none"> -->
-  <div id="sun" class="weather sunny" style="display: none">
-    Conditions: Clear
+  <div style="text-align: right; right: 0%; position: absolute;" value="{window.name}"></div>
+  <div id="holder" style="display: none">
+  <div id="sun" class="weather sunny" >
+    <h4>Conditions: Clear</h4>
   </div>
-  <div id="cloud" class="weather cloudy" style="display: none">
-    Conditions: Clouds
+  <div id="cloud" class="weather cloudy" >
+    <h4>Conditions: Clouds</h4>
   </div>
-  <div id="rain" class="weather rainy" style="display: none">
-    Conditions: Rain
+  <div id="rain" class="weather rainy" >
+    <h4>Conditions: Rain</h4>
   </div>
-  <div id="snow" class="weather snowy" style="display: none">
-    Conditions: Snow
+  <div id="snow" class="weather snowy" >
+    <h4>Conditions: Snow</h4>
   </div>
-  <div id="renderJson" style="display: none">OpenWeatherMap API Results:</div>
-  <!-- </div> -->
+  <div id="eightDay" ></div>
+  <div style="width:225px ;height: 500px;">
+  <div id="renderJson"></div>
+</div>
+</div>
 </div>
 
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
@@ -68,9 +71,10 @@
   });
 
   window.changeConditions = function () {
-    if (window.weather.weather[0].main) {
-      // document.getElementById("weatherDisplay").style.display = "flex";
+    document.getElementById("holder").style = `display: flex; 
+    flex-direction: column;`;
 
+    if (window.weather.weather[0].main) {
       let rain = document.getElementById("rain");
       window.weather.weather[0].main == "Rain"
         ? (rain.style.display = "block")
@@ -95,23 +99,19 @@
     }
   };
 
-
-window.removeJson = function(){
-  if(document.getElementById("renderJson").hasChildNodes()) {
-      document.getElementById("renderJson").removeChild(document.getElementById("renderJson").childNodes[0]);
+  window.removeJson = function () {
+    if (document.getElementById("renderJson").hasChildNodes()) {
+      document
+        .getElementById("renderJson")
+        .removeChild(document.getElementById("renderJson").childNodes[0]);
     }
-}
-
+  };
 
   window.viewPoint = function () {
-
     window.removeJson();
-
     window.changeConditions();
-
     let lat = window.lat;
     let lon = window.lon;
-
     const DIST = 2000;
     let viewPoi = new og.LonLat(lon, lat, 3039);
     let ell = globus.planet.ellipsoid;
@@ -119,22 +119,16 @@ window.removeJson = function(){
   };
 
   window.flyPoint = function () {
-    
     window.removeJson();
-
     window.changeConditions();
-
     let lat = window.lat;
     let lon = window.lon;
-
     let ell = globus.planet.ellipsoid;
-
     let destPos = new og.LonLat(lon, lat, 10779);
     let viewPoi = new og.LonLat(lon - 0.2, lat - 0.2, 3039);
-
     let lookCart = ell.lonLatToCartesian(viewPoi);
-    let upVec = ell.lonLatToCartesian(destPos).normalize();
-
+    let upVec = ell.lonLatToCartesian(destPos)
+    // .normalize();
     // 0 - is an amplitude of the fly track
     globus.planet.camera.flyLonLat(destPos, lookCart, upVec, 0);
   };
@@ -142,49 +136,95 @@ window.removeJson = function(){
   window.viewExtent = function () {
     window.removeJson();
     window.hideWeatherInfo();
-    
     let lat = window.lat;
     let lon = window.lon;
-
     globus.planet.flyExtent(
-        new og.Extent(
+      new og.Extent(
         new og.LonLat(lon, lat),
         new og.LonLat(lon + 0.1, lat + 0.1)
       )
     );
   };
 
-window.hideWeatherInfo = function(){
-  document.getElementById("rain").style.display = "none";
-    document.getElementById("sun").style.display = "none";
-    document.getElementById("cloud").style.display = "none";
-    document.getElementById("snow").style.display = "none";
-    document.getElementById("renderJson").style.display = "none";
+  window.hideWeatherInfo = function () {
+    document.getElementById("holder").style.display = "none";
 
-}
+    document.getElementById("renderJson").hasChildNodes()
+      ? document
+          .getElementById("renderJson")
+          .removeChild(document.getElementById("renderJson").childNodes[0])
+      : "";
+      document.getElementById("eightDay").hasChildNodes()
+      ? document
+          .getElementById("eightDay")
+          .removeChild(document.getElementById("eightDay").childNodes[0])
+      : "";
+  };
 
+  window.eightDayForecast = function(daily) {
+    const url = `https://api.openweathermap.org/data/2.5/onecall?lat=${window.lat}&lon=${window.lon}&exclude=minutely,hourly&appid=${key}&units=imperial`;
+
+    axios.get(url).then((res) => {
+      let daily = res.data.daily;
+      
+    let avgTemp = 0;
+    let minTemp = daily[0].temp.min;
+    let maxTemp = daily[0].temp.max;
+    for (let x in daily) {
+      avgTemp += daily[x].temp.day;
+      minTemp = daily[x].temp.min < minTemp ? daily[x].temp.min : minTemp;
+      maxTemp = daily[x].temp.max > maxTemp ? daily[x].temp.max : maxTemp;
+    }
+    avgTemp = avgTemp / 8;
+    console.log("avgTemp : ", avgTemp.toFixed(2));
+    console.log("minTemp : ", minTemp);
+    console.log("maxTemp : ", maxTemp);
+    let forecast = {
+      avgTemp: avgTemp.toFixed(2),
+      minTemp: minTemp,
+      maxTemp: maxTemp,
+    };
+    const eightDaySummary=
+    `
+    <h4>8-Day Weather Summary:</h4>
+    <div>8-Day Average Temperature: ${forecast.avgTemp}</div>
+    <div>8-Day Max Temperature: ${forecast.maxTemp}</div>
+    <div>8-Day Min Temperature: ${forecast.minTemp}</div>
+    <h4>Daily:</h4>  
+    `
+
+    document
+        .getElementById("eightDay").innerHTML = eightDaySummary;
+      
+  
+  });
+  
+  }
+
+// window.oneDayForcast = function(lat, lon) {
+// }
 
   globus.planet.renderer.events.on("lclick", (e) => {
-    document
-      .getElementById("renderJson")
-      .removeChild(document.getElementById("renderJson").firstChild);
-
+    window.hideWeatherInfo();
     const coords = document
       .querySelector(".ogEarthCoordinatesControl")
       .innerText.split(",");
-
     window.lat = coords[0].split(" ")[1];
     window.lon = coords[1].split(" ")[1];
-
+    //display min,max,avg (daytime) temperature over the 8-day forecast using the (.daily[].day|min|max portion of) ./onecall API
+    // const url = `https://api.openweathermap.org/data/2.5/onecall?lat=${window.lat}&lon=${window.lon}&exclude=minutely,hourly&appid=${key}&units=imperial`;
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${window.lat}&lon=${window.lon}&appid=${key}&units=imperial`;
-    axios.get(url).then((res) => {
-      console.log(res.data);
-      window.weather = res.data;
 
+    axios.get(url).then((res) => {
+      console.log(res.data.daily);
+      let forecast = window.eightDayForecast(res.data.daily);
+      window.weather = res.data;
+      window.name = res.data.name;
       let lonLat = globus.planet.getLonLatFromPixelTerrain(e);
       globus.planet.terrain.getHeightAsync(lonLat, (h) => {
         myPopup.setContent(
-          `<div>Name: ${res.data.name}</div>
+          ` 
+          <div>Name: ${res.data.name}</div>    
           <button id="viewPoint" onClick={window.viewPoint()}>View Point</button>
           <button id="flyPoint" onClick={window.flyPoint()}>Fly Point</button>
           `
@@ -203,7 +243,7 @@ window.hideWeatherInfo = function(){
     right: 0%;
     margin: 0 auto;
     display: inline-block;
-    width: 180px;
+    width: 225px;
     height: 25%;
     background: black;
     color: white;
@@ -344,19 +384,39 @@ window.hideWeatherInfo = function(){
   }
 </style>
 
+
+
+<style>
+  #eightDay {
+    position: absolute;
+    background: black;
+    color: white;
+    top:20%;
+    width: 225px;
+    margin: 0 auto;
+    right: 0%;
+    justify-self: right;    
+    justify-content: right;
+    align-items: flex-end;
+  }
+
+
+</style>
 <style>
   #renderJson {
     font-family: Arial, Helvetica, sans-serif;
     position: absolute;
-    top: 25%;
+    top: 40%;
     /* left: 40%; */
     right: 0;
     margin: 0 auto;
     height: fit-content;
-    width: fit-content;
+    /* width: fit-content; */
     text-shadow: none;
-    background: white;
+    background: black;
+    color: white;
     padding: 1em;
+    overflow: hidden;
   }
 
   .renderjson a {
@@ -364,24 +424,29 @@ window.hideWeatherInfo = function(){
   }
 
   .renderjson .disclosure {
-    color: darkblue;
+    color: lightblue;
     font-size: 150%;
   }
 
   .renderjson .syntax {
-    color: grey;
+    color: yellow;
   }
 
   .renderjson .string {
     color: red;
   }
 
+  .renderjson a:-webkit-any-link {
+    color: white;
+    font-size: 150%;
+  }
+
   .renderjson .number {
-    color: green;
+    color: rgb(43, 231, 43);
   }
 
   .renderjson .boolean {
-    color: purple;
+    color: rgb(255, 59, 255);
   }
 
   .renderjson .key {
@@ -389,25 +454,33 @@ window.hideWeatherInfo = function(){
   }
 
   .renderjson .keyword {
-    color: black;
+    color: lightcoral;
   }
 
   .renderjson .object.syntax {
-    color: darkgreen;
+    color: yellowgreen;
   }
 
   .renderjson .array.syntax {
-    color: darkmagenta;
+    color: pink;
   }
 </style>
 
 <style>
-  #weatherDisplay {
-    position: absolute;
-    background: black;
-    /* color: white; */
-    width: 50%;
-    height: 50%;
+  #holder{
     right: 0%;
+    opacity: 0.8;
+    position: absolute;
+    height: 100vh;
+    margin: 0 auto;
+    text-align: center;
+    /* height: fit-content; */
+    /* width: 25%; */
+    justify-self: right;    
+    justify-content: right;
+    align-items: flex-end;
+    background: black;
+    z-index: 4;
+    /* overflow: hidden; */
   }
 </style>
