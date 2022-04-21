@@ -6,25 +6,28 @@
 
 <div id="globus">
   <button id="viewExtent" onClick="{window.viewExtent()}">View extent</button>
-  <div style="text-align: right; right: 0%; position: absolute;" value="{window.name}"></div>
+  <div
+    style="text-align: right; right: 0%; position: absolute"
+    value="{window.name}"
+  ></div>
   <div id="holder" style="display: none">
-  <div id="sun" class="weather sunny" >
-    <h4>Conditions: Clear</h4>
+    <div id="sun" class="weather sunny">
+      <h4>Conditions: Clear</h4>
+    </div>
+    <div id="cloud" class="weather cloudy">
+      <h4>Conditions: Clouds</h4>
+    </div>
+    <div id="rain" class="weather rainy">
+      <h4>Conditions: Rain</h4>
+    </div>
+    <div id="snow" class="weather snowy">
+      <h4>Conditions: Snow</h4>
+    </div>
+    <div id="eightDay"></div>
+    <div style="width: 225px; height: 500px">
+      <div id="renderJson"></div>
+    </div>
   </div>
-  <div id="cloud" class="weather cloudy" >
-    <h4>Conditions: Clouds</h4>
-  </div>
-  <div id="rain" class="weather rainy" >
-    <h4>Conditions: Rain</h4>
-  </div>
-  <div id="snow" class="weather snowy" >
-    <h4>Conditions: Snow</h4>
-  </div>
-  <div id="eightDay" ></div>
-  <div style="width:225px ;height: 500px;">
-  <div id="renderJson"></div>
-</div>
-</div>
 </div>
 
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
@@ -92,6 +95,7 @@
         ? (snow.style.display = "block")
         : (snow.style.display = "none");
 
+      // console.log(renderjson(window.weather));
       document
         .getElementById("renderJson")
         .appendChild(renderjson(window.weather));
@@ -127,7 +131,7 @@
     let destPos = new og.LonLat(lon, lat, 10779);
     let viewPoi = new og.LonLat(lon - 0.2, lat - 0.2, 3039);
     let lookCart = ell.lonLatToCartesian(viewPoi);
-    let upVec = ell.lonLatToCartesian(destPos)
+    let upVec = ell.lonLatToCartesian(destPos);
     // .normalize();
     // 0 - is an amplitude of the fly track
     globus.planet.camera.flyLonLat(destPos, lookCart, upVec, 0);
@@ -154,57 +158,62 @@
           .getElementById("renderJson")
           .removeChild(document.getElementById("renderJson").childNodes[0])
       : "";
-      document.getElementById("eightDay").hasChildNodes()
+    document.getElementById("eightDay").hasChildNodes()
       ? document
           .getElementById("eightDay")
           .removeChild(document.getElementById("eightDay").childNodes[0])
       : "";
+      document.getElementById("renderJsonPopup")?.hasChildNodes()
+      ? document
+          .getElementById("renderJsonPopup")
+          .removeChild(document.getElementById("renderJsonPopup").childNodes[0])
+      : "";
   };
 
-  window.eightDayForecast = function(daily) {
+  window.eightDayForecast = async function (daily) {
     const url = `https://api.openweathermap.org/data/2.5/onecall?lat=${window.lat}&lon=${window.lon}&exclude=minutely,hourly&appid=${key}&units=imperial`;
 
-    axios.get(url).then((res) => {
+  return await axios.get(url).then((res) => {
       let daily = res.data.daily;
-      
-    let avgTemp = 0;
-    let minTemp = daily[0].temp.min;
-    let maxTemp = daily[0].temp.max;
-    for (let x in daily) {
-      avgTemp += daily[x].temp.day;
-      minTemp = daily[x].temp.min < minTemp ? daily[x].temp.min : minTemp;
-      maxTemp = daily[x].temp.max > maxTemp ? daily[x].temp.max : maxTemp;
-    }
-    avgTemp = avgTemp / 8;
-    console.log("avgTemp : ", avgTemp.toFixed(2));
-    console.log("minTemp : ", minTemp);
-    console.log("maxTemp : ", maxTemp);
-    let forecast = {
-      avgTemp: avgTemp.toFixed(2),
-      minTemp: minTemp,
-      maxTemp: maxTemp,
-    };
-    const eightDaySummary=
-    `
-    <h4>8-Day Weather Summary:</h4>
+
+      let avgTemp = 0;
+      let minTemp = daily[0].temp.min;
+      let maxTemp = daily[0].temp.max;
+      for (let x in daily) {
+        avgTemp += daily[x].temp.day;
+        minTemp = daily[x].temp.min < minTemp ? daily[x].temp.min : minTemp;
+        maxTemp = daily[x].temp.max > maxTemp ? daily[x].temp.max : maxTemp;
+      }
+      avgTemp = avgTemp / 8;
+      console.log("avgTemp : ", avgTemp.toFixed(2));
+      console.log("minTemp : ", minTemp);
+      console.log("maxTemp : ", maxTemp);
+      let forecast = {
+        avgTemp: avgTemp.toFixed(2),
+        minTemp: minTemp,
+        maxTemp: maxTemp,
+      };
+     window.eightDaySummary = `
+    <h5>8-Day Weather Summary:</h5>
     <div>8-Day Average Temperature: ${forecast.avgTemp}</div>
     <div>8-Day Max Temperature: ${forecast.maxTemp}</div>
     <div>8-Day Min Temperature: ${forecast.minTemp}</div>
-    <h4>Daily:</h4>  
-    `
+    <h5>Daily:</h5>  
+    `;
 
-    document
-        .getElementById("eightDay").innerHTML = eightDaySummary;
-      
-  
-  });
-  
-  }
 
-// window.oneDayForcast = function(lat, lon) {
-// }
+      document.getElementById("eightDay").innerHTML = window.eightDaySummary;
+    
+    return window.eightDaySummary
+    });
 
-  globus.planet.renderer.events.on("lclick", (e) => {
+    
+  };
+
+  // window.oneDayForcast = function(lat, lon) {
+  // }
+
+  globus.planet.renderer.events.on("lclick",  (e) => {
     window.hideWeatherInfo();
     const coords = document
       .querySelector(".ogEarthCoordinatesControl")
@@ -217,19 +226,33 @@
 
     axios.get(url).then((res) => {
       console.log(res.data.daily);
-      let forecast = window.eightDayForecast(res.data.daily);
+      
       window.weather = res.data;
       window.name = res.data.name;
       let lonLat = globus.planet.getLonLatFromPixelTerrain(e);
-      globus.planet.terrain.getHeightAsync(lonLat, (h) => {
+
+      let forecast = Promise.resolve( window.eightDayForecast(res.data.daily)).then((res)=>{
+        console.log(res)
+        window.eightDaySummary = res
+
+        globus.planet.terrain.getHeightAsync(lonLat, (h) => {
         myPopup.setContent(
           ` 
-          <div>Name: ${res.data.name}</div>    
+          <h4>Name: ${window.name}</h4>
+          <div>${res}</div>
+          <div id="renderJsonPopup"></div>    
           <button id="viewPoint" onClick={window.viewPoint()}>View Point</button>
           <button id="flyPoint" onClick={window.flyPoint()}>Fly Point</button>
+          </div>
           `
         );
+        document
+        .getElementById("renderJsonPopup")
+        .appendChild(renderjson(window.weather));
       });
+      })
+
+
       let groundPos = globus.planet.getCartesianFromMouseTerrain();
       myPopup.setCartesian3v(groundPos);
       myPopup.setVisibility(true);
@@ -384,23 +407,19 @@
   }
 </style>
 
-
-
 <style>
   #eightDay {
     position: absolute;
     background: black;
     color: white;
-    top:20%;
+    top: 20%;
     width: 225px;
     margin: 0 auto;
     right: 0%;
-    justify-self: right;    
+    justify-self: right;
     justify-content: right;
     align-items: flex-end;
   }
-
-
 </style>
 <style>
   #renderJson {
@@ -466,8 +485,58 @@
   }
 </style>
 
+
 <style>
-  #holder{
+ 
+
+  #renderJsonPopup a {
+    text-decoration: none;
+  }
+
+  #renderJsonPopup .disclosure {
+    color: black;
+    font-size: 150%;
+  }
+
+  #renderJsonPopup .syntax {
+    color: black;
+  }
+
+  #renderJsonPopup .string {
+    color: black;
+  }
+
+  #renderJsonPopup a:-webkit-any-link {
+    color: black;
+    font-size: 150%;
+  }
+
+  #renderJsonPopup .number {
+    color:black;
+  }
+
+  #renderJsonPopup .boolean {
+    color:black;
+  }
+
+  #renderJsonPopup .key {
+    color:black;
+  }
+
+  #renderJsonPopup .keyword {
+    color:black;
+  }
+
+  #renderJsonPopup .object.syntax {
+    color:black;
+  }
+
+  #renderJsonPopup .array.syntax {
+    color:black;
+  }
+</style>
+<style>
+  #holder {
     right: 0%;
     opacity: 0.8;
     position: absolute;
@@ -476,7 +545,7 @@
     text-align: center;
     /* height: fit-content; */
     /* width: 25%; */
-    justify-self: right;    
+    justify-self: right;
     justify-content: right;
     align-items: flex-end;
     background: black;
