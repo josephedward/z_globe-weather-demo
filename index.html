@@ -1,7 +1,10 @@
-<link rel="stylesheet" href="./og.css" />
+<!-- <link rel="stylesheet" href="./og.css" /> -->
 
-<link rel="stylesheet" href="//www.openglobus.org/og.css" type="text/css" />
-<script src="//www.openglobus.org/og.js"></script>
+<!-- <link rel="stylesheet" href="//www.openglobus.org/og.css" type="text/css" /> -->
+<!-- <script src="//www.openglobus.org/og.js"></script> -->
+<link rel="stylesheet" href="./@openglobus/og.css" />
+<script src="./@openglobus/og.umd.js"></script>
+
 <script src="https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js"></script>
 
 <div id="globus">
@@ -32,7 +35,7 @@
 
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 <script type="module">
-  import { layer, Globe, terrain } from "./og.esm.js";
+  import { layer, Globe, terrain } from "./@openglobus/og.esm.js";
 
   const { XYZ } = layer;
   const { GlobusTerrain } = terrain;
@@ -206,11 +209,23 @@
 
   globus.planet.renderer.events.on("lclick", (e) => {
     window.hideWeatherInfo();
-    const coords = document
-      .querySelector(".ogEarthCoordinatesControl")
-      .innerText.split(",");
-    window.lat = coords[0].split(" ")[1];
-    window.lon = coords[1].split(" ")[1];
+    window.lat = document.querySelector(".og-lat-val").innerText;
+    window.lon = document.querySelector(".og-lon-val").innerText;
+    let latsign = document.querySelector(".og-lat-val").innerText;
+    let lonSign = document.querySelector(".og-lon-val").innerText;
+    if (latsign.innerText == "N") {
+      window.lat = parseFloat(window.lat);
+    } else {
+      window.lat = -parseFloat(window.lat);
+    }
+    if (lonSign.innerText == "E") {
+      window.lon = parseFloat(window.lon);
+    } else {
+      window.lon = -parseFloat(window.lon);
+    }
+    console.log("lat : ", window.lat);
+    console.log("lon : ", window.lon);
+
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${window.lat}&lon=${window.lon}&appid=${key}&units=imperial`;
 
     axios.get(url).then((res) => {
