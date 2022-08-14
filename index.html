@@ -1,7 +1,3 @@
-<!-- <link rel="stylesheet" href="./og.css" /> -->
-
-<!-- <link rel="stylesheet" href="//www.openglobus.org/og.css" type="text/css" /> -->
-<!-- <script src="//www.openglobus.org/og.js"></script> -->
 <link rel="stylesheet" href="./@openglobus/og.css" />
 <script src="./@openglobus/og.umd.js"></script>
 
@@ -211,14 +207,18 @@
     window.hideWeatherInfo();
     window.lat = document.querySelector(".og-lat-val").innerText;
     window.lon = document.querySelector(".og-lon-val").innerText;
-    let latsign = document.querySelector(".og-lat-val").innerText;
-    let lonSign = document.querySelector(".og-lon-val").innerText;
-    if (latsign.innerText == "N") {
+    let latSign = document.querySelector(".og-lat-side").innerText;
+    let lonSign = document.querySelector(".og-lon-side").innerText;
+
+    console.log(latSign)
+    console.log(lonSign)
+
+    if (latSign == "N") {
       window.lat = parseFloat(window.lat);
     } else {
       window.lat = -parseFloat(window.lat);
     }
-    if (lonSign.innerText == "E") {
+    if (lonSign == "E") {
       window.lon = parseFloat(window.lon);
     } else {
       window.lon = -parseFloat(window.lon);
